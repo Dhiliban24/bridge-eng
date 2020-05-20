@@ -1,0 +1,21 @@
+{% load bootstrap3 static %}
+
+{% block title %}
+    {% if not group.id %}
+        New Module Group configuration
+    {% else %}
+        Update {{ group.name }}
+    {% endif %}
+{% endblock title %}
+
+{% block body %}
+
+    <form role="form" method="post" id="group_form">
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        <button class="btn btn-primary" type="submit">
+            {% if group.id %}Update{% else %}Create{% endif %}</button>
+
+    </form>
+
+{% endblock body %}

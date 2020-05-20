@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# local Django logs:
+***.log
+***.log.*
+***.egg-info
+.idea/
+**/.coverage
+## Secure settings
+secure.py
+secure.config
+
+**.coverage
+**.cache
+
+***.log
+***.log.*
+***.egg*
+.idea
+
+bridge_adaptivity/nginx/ssl/
+static/
+
+***.pytest_cache/
+
+***/coverage.xml
+
+.tox/
+
+ChangeLog
+
+# ssl resources for local dev
+*.crt
+*.key
+
+# local environment settings
+.env

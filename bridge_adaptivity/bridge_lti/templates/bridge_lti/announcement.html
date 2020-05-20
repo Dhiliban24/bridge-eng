@@ -1,0 +1,25 @@
+{% extends "module/base.html" %}
+{% load staticfiles %}
+
+
+{% block bootstrap3_content %}
+
+
+<div class="container-fluid toolbar">
+    <div class="row">
+    {% if demo %}
+    <a
+        href="{% url 'module:delete_sequence' sequence.id %}?return_url={% url 'module:group-detail' sequence.collection_order.group.slug %}?back_url={{ back_url }}">
+        <button class="btn btn-warning ">Close Demo</button>
+    </a>
+
+    {% endif %}
+    <div class="jumbotron">
+      <h2>{{ title|capfirst }}</h2>
+      <p>{{ message|capfirst }}</p>
+      <p class="text-muted"><small>Tip: {{ tip }}</small></p>
+    </div>
+  </div>
+</div>
+
+{% endblock bootstrap3_content %}

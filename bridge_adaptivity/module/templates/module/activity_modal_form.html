@@ -1,0 +1,46 @@
+{% extends "module/base_modal_form.html" %}
+{% load bootstrap3 static %}
+
+
+{% block title %}
+    Activity configuration
+{% endblock title %}
+
+{% block body %}
+    <form role="form" method="post">
+        {% csrf_token %}
+
+        {% for field in form %}
+            {% if field.name not in form.advanced_fields %}
+                {% bootstrap_field field %}
+            {% endif %}
+        {% endfor %}
+
+        <div class="advanced_fields">
+            {% for field in form %}
+                {% if field.name in form.advanced_fields %}
+                    {% bootstrap_field field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <button
+                class="btn btn-default activity-show-advanced-options"
+                data-toggle=".advanced_fields"
+                onclick=" $($(this).data('toggle')).toggle('slow');
+                        $('.activity-show-advanced-options .glyphicon').toggleClass('glyphicon-plus').toggleClass('glyphicon-minus');
+                        button_description = $(this).children('.button_description');
+                        button_description.text(((button_description.text()) == 'Show'? 'Hide' : 'Show' ));
+                        event.preventDefault();
+        "
+        >
+            {% bootstrap_icon "plus" %} <span class="button_description">Show</span> advanced options
+        </button>
+
+        <button class="btn btn-primary" type="submit">{% if activity %}Update{% else %}Create{% endif %}</button>
+        {% if activity %}
+            <a href="{% url 'module:activity-delete' object.id %}" class="btn btn-default" role="button"
+               type="reset">Delete</a>
+        {% endif %}
+    </form>
+{% endblock body %}

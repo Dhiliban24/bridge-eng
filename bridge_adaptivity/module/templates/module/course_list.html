@@ -1,0 +1,70 @@
+{% extends "module/base.html" %}
+{% load bootstrap3 static %}
+
+{% block title %}Courses{% endblock title %}
+
+<hr>
+
+{% block content %}
+{% include "module/modals/modal_wrapper.html" %}
+{% url 'module:course-add' as course_add %}
+
+  {% if courses %}
+    <table class="table table-hover">
+      <tr>
+        <th>course name</th>
+        <th class="text-left">description</th>
+        <th style="min-width:170px;">groups in course</th>
+        <th style="min-width:90px;">options</th>
+      </tr>
+      {% for course in courses %}
+        <tr>
+          <td>
+            <a href="{% url 'module:course-detail' course.slug %}?back_url={% url 'module:course-list' %}">
+            {{ course.name }}</a></td>
+          </td>
+          <td class="text-left">
+            {{ course.description }}
+          </td>
+          <td>
+            {{ course.course_groups.count }}
+          </td>
+          <td>
+            <div>
+            {% url 'module:course-change' course.slug as course_edit %}
+            <a>
+            {% bootstrap_button "" size='sm' icon='edit' extra_classes='modal_launcher' value=course_edit %}
+            </a>
+              <a class="move-down delete-object"
+                 href="{% url 'module:course-delete' course_slug=course.slug %}"
+                 data-id="{{ course.id }}">
+                  {% bootstrap_button "" size='sm' icon='trash' %}
+              </a>
+              {% url 'module:course-delete' course_slug=course.slug as delete_url %}
+              {% include "module/modals/confirmation_modal.html" with add_obj_in_title=True object=course action_url=delete_url id=course.id title="You are about deleting " %}
+            </div>
+
+            <div>
+
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <div class="alert alert-info" role="alert">
+      You have no courses for now.
+    </div>
+  {% endif %}
+
+  <hr>
+  {% bootstrap_button 'Add Course' size='lg' icon='plus' extra_classes='modal_launcher' value=course_add %}
+
+{% endblock content %}
+
+
+{% block bootstrap3_extra_script %}
+  {{ block.super }}
+  <script src="{% static 'module/js/module.js' %}"></script>
+{% endblock bootstrap3_extra_script %}
+

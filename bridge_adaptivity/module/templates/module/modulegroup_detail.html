@@ -1,0 +1,236 @@
+{% extends "module/base.html" %}
+{% load static bootstrap3 fontawesome %}
+
+{% block title %}
+  Module Group: <span class="label label-default">{{ group.name }}</span>
+{% endblock title %}
+
+{% block content %}
+
+{% include "module/modals/modal_wrapper.html" %}
+
+<div class="row">
+<div class="col-md-12">
+    <div class="detail-toolpanel">
+        {% if not request.session.read_only_data and group.owner == user %}
+            {% url 'module:group-share' group_slug=group.slug as group_share %}
+            <a>
+            {% bootstrap_button "Share" size='sm' icon='share' extra_classes='modal_launcher' value=group_share %}
+            </a>
+
+            {% url 'module:group-change' group_slug=group.slug as group_edit %}
+            <a>
+            {% bootstrap_button "Edit" size='sm' icon='edit' extra_classes='modal_launcher' value=group_edit %}
+            </a>
+            <a class="pull-right delete-object
+                     {% if group.has_linked_active_sequences %}
+                       show-alarm {% else %} show-warning
+                     {% endif %}"
+               data-id="{{ group.slug }}">
+                {% bootstrap_button 'Delete' size='sm' icon='trash' %}
+            </a>
+        {% endif %}
+    </div>
+  </div>
+
+  {% if group.description %}
+      <div class="col-md-12">
+          <div class="alert alert-info">
+            <h4 class="text-center">Description</h4>
+            <p class="text-left">
+              {{ group.description }}
+            </p>
+          </div>
+      </div>
+  {% endif %}
+
+  <div class="col-md-12">
+    {% if group.collections.all %}
+      <table class="table table-hover">
+        <tr>
+          <th>collection name</th>
+          <th>strict forward</th>
+          <th>grading policy</th>
+          <th>engine</th>
+          <th>ui options</th>
+          <th>options</th>
+        </tr>
+        {% for collection_order, grade_update_available in group.ordered_collections %}
+          {% if request.session.read_only_data and collection_order.collection.slug != request.session.read_only_data.collection_slug %}
+            {# Continue #}
+          {% else %}
+              <tr {% if not request.session.read_only_data %}
+                      draggable="true" class="droppable"
+                      ondrop="drop_handler(event, this);"
+                      ondragstart="dragstart_handler(event);"
+                      ondragover="dragover_handler(event);"
+                      data-index="{{ forloop.counter0 }}"
+                      data-move_url="{% url 'module:collection-move' collection_order_slug=collection_order.slug %}?back_url={{ group.get_absolute_url}}"
+                  {% endif %}
+              >
+                <td>
+                  <a href="{% url 'module:collection-detail' collection_order.collection.slug %}?back_url={{ group.get_absolute_url}}">
+                  {{ collection_order.collection.name }} :
+                  {{ collection_order.collection.activities.count }}
+                  {{ collection_order.collection.activities.count|pluralize:'activity,activities' }}</a></td>
+                <td>{% if collection_order.strict_forward %}
+                  <span class="glyphicon glyphicon-ok-circle" aria-hidden="true"></span>
+                {% else %}
+                  <span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span>
+                {% endif %}
+                </td>
+                <td>
+                    {% if collection_order.grading_policy.name %}
+                        {{ collection_order.grading_policy.policy_cls.public_name|default:'Not selected'}}
+                    {% else %}
+                        Not selected
+                    {% endif %}
+                    {% if collection_order.grading_policy.params %}
+                        {% for key, value in collection_order.grading_policy.params.items %}
+                            <p>{{key.title }}: {{ value }}</p>
+                        {% endfor %}
+                    {% endif %}
+                </td>
+                <td>{{ collection_order.engine.engine_name }}</td>
+                <td>
+                    {% for option in collection_order.get_selected_ui_options %}
+                        <p>{{ option }}</p>
+                    {% endfor %}
+
+                </td>
+                <td>
+
+
+                    <a id="launch-demo" class=""
+                       href="{% url 'module:demo' collection_order_slug=collection_order.slug %}?back_url={% url 'module:group-list' %}">
+                      <button class="btn btn-warning btn-sm">
+                          <span class="glyphicon glyphicon-education"></span>
+                          Demo
+                          <span data-toggle="popover"
+                             data-placement="right"
+                             id="demo_help"
+                             content="bla bla bla"
+                             class="glyphicon glyphicon-info-sign"
+                          ></span>
+                      </button>
+                    </a>
+                    <a id="launch-url-fetcher" class=""
+                       data-clipboard-text="{{ bridge_host }}{% url 'lti:launch' collection_order_slug=collection_order.slug unique_marker='set_me_unique' %}">
+                      <button class="btn btn-default btn-sm">
+                          <span class="glyphicon glyphicon-link"></span>
+                          copy Launch URL
+                          <span data-toggle="popover"
+                             data-placement="right"
+                             id="launch_url_help"
+                             content="bla bla bla"
+                             class="glyphicon glyphicon-info-sign"
+                          ></span>
+                      </button>
+
+                    </a>
+                    {% if not request.session.read_only_data %}
+
+
+                    {% with undone=True %}
+
+                      {% url 'module:collection-group-delete' collection_order_slug=collection_order.slug  as delete_url %}
+
+                      {% with title="You are about delete configuration for <Collection: "|add:collection_order.collection.name|add:"> from <ModuleGroup: "|add:group.name|add:">" %}
+                        {% if collection_order.has_linked_active_sequences %}
+                          {% with message="At least one student is still working on the " %}
+                            {% include "module/modals/confirmation_modal.html" with object=collection_order action_url=delete_url id=collection_order.id %}
+                          {% endwith %}
+                        {% elif collection_order.has_linked_sequences %}
+                          {% with message="At least one student is linked to the " %}
+                            {% include "module/modals/confirmation_modal.html" with object=collection_order action_url=delete_url id=collection_order.id %}
+                          {% endwith %}
+                        {% else %}
+                          {% include "module/modals/confirmation_modal.html" with object=collection_order action_url=delete_url id=collection_order.id %}
+                        {% endif %}
+                      {% endwith %}
+                    {% endwith %}
+                    {% url 'module:collection-order-change' collection_order_slug=collection_order.slug as collection_edit %}
+                     <a>
+                        {% bootstrap_button "Edit" size='sm' icon='edit' extra_classes='modal_launcher' value=collection_edit %}
+                        <a/>
+
+                    <a
+                        class="move-down delete-object {% if collection.has_linked_active_sequences %} show-alarm
+                            {% elif collection.has_linked_sequences %} show-warning{% endif %}"
+                        href=""
+                        data-id="{{ collection_order.id }}">
+                      <button class="btn btn-default btn-sm">{% fontawesome_icon icon='trash' %} Delete</button>
+                    </a>
+                        {% if grade_update_available %}
+                            {% url 'module:update_grades' collection_order_slug=collection_order.slug as update_grades %}
+                            <a class="show-warning" data-order_update_url="{{update_grades}}">
+                                {% bootstrap_button 'Update Students Grades' size='sm' icon='refresh' button_class="btn-primary" %}
+                            </a>
+                        {% endif %}
+
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endif %}
+        {% endfor %}
+      </table>
+    {% else %}
+      <div class="alert alert-info" role="alert">
+        You have no collections for now.
+      </div>
+    {% endif %}
+
+    {% if not request.session.read_only_data %}
+        {% url 'module:collection-order-add' group_slug=group.slug as new_collection_add %}
+  {% bootstrap_button "Add new" size='sm' icon='Add' extra_classes='modal_launcher' value=new_collection_add %}
+    {% endif %}
+
+    <hr>
+        <h3>
+          <small>Tips:</small>
+        </h3>
+        <ul>
+          <li class="text-muted">to show demo - click "Demo" button</li>
+          <li class="text-muted">to copy LTI launch URL - click "copy launch URL" button</li>
+          <li class="text-muted">to change the collection configurations - click "Edit" button</li>
+          <li class="text-muted">to add the collection into the group - click "Add new" button</li>
+          <li class="text-muted">to remove collection from the group - click "Delete" button</li>
+          <li class="text-muted">to update students grades - click "Update Students Grades" button</li>
+          <li class="text-muted">to share the module group - click "Share" button</li>
+          <li class="text-muted">Collection items in the Group can be Dragged&Dropped</li>
+        </ul>
+
+      <hr>
+  </div>
+</div>
+
+{% url 'module:group-delete' group_slug=group.slug as delete_url %}
+
+{% with title="Force update of students grades" message="Students grades related to the current group will be updated!" %}
+  {% include "module/modals/confirmation_modal.html" with object='' action_url=update_grades form_id="updateGradeForm" %}
+{% endwith %}
+
+{% if group.has_linked_active_sequences %}
+  {% with message="At least one student is still working on the Collection which is in Collection Group" %}
+    {% include "module/modals/confirmation_modal.html" with object=group action_url=delete_url id=group.slug %}
+  {% endwith %}
+{% elif group.has_linked_sequences %}
+  {% with message="At least one student is linked to the Collection which is in Collection Group" %}
+    {% include "module/modals/confirmation_modal.html" with object=group action_url=delete_url id=group.slug %}
+  {% endwith %}
+{% else %}
+  {% include "module/modals/confirmation_modal.html" with object=group action_url=delete_url id=group.slug %}
+{% endif %}
+
+{% endblock content %}
+
+
+{% block bootstrap3_extra_script %}
+  {{ block.super }}
+  {% if not request.session.read_only_data %}
+    <script src="{% static 'module/js/module.js' %}"></script>
+    <script src="{% static 'module/js/base_drag_drop.js' %}"></script>
+    <script src="{% static 'module/js/drag_drop.js' %}"></script>
+  {% endif %}
+{% endblock bootstrap3_extra_script %}

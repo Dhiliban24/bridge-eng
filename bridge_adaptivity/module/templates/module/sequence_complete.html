@@ -1,0 +1,18 @@
+{% extends "module/sequence_item_base.html" %}
+{% load staticfiles bootstrap3 %}
+
+
+{% block main_content %}
+
+<div class="row">
+  <div class="jumbotron">
+    <h2>Congrats!</h2>
+    <p>You've reached the end of this sequence!</p>
+    <p>Use the numbered navigation bar above to go back to previous problems.</p>
+  </div>
+</div>
+
+{% bootstrap_javascript jquery=True %}
+<script src="{% static 'module/js/work_with_cookie.js' %}"></script>
+<script src="{% static 'module/js/clean_cookies.js' %}"></script>
+{% endblock main_content %}

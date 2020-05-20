@@ -1,0 +1,115 @@
+{% extends "module/base.html" %}
+{% load static bootstrap3 fontawesome %}
+
+{% block title %}
+<div>Course: <span class="label label-default">{{ course.name }}</span></div>
+  <h3>
+    {% url 'module:course-change' course.slug as course_edit %}
+    <a class="pull-right">
+    {% bootstrap_button "Edit" size='sm' icon='edit' extra_classes='pull-right modal_launcher' value=course_edit %}
+    </a>
+    <a class="pull-right delete-object" href="{% url 'module:course-delete' course.slug %}?back_url={{ course.get_absolute_url}}">
+      {% bootstrap_button 'Delete' size='sm' icon='trash' %}
+    </a>
+  </h3>
+{% endblock title %}
+
+{% block content %}
+<!--Left side column-->
+<div class="col-md-9">
+  {% if course.course_groups.all %}
+    <table class="table table-hover">
+      <tr>
+        <th>group name</th>
+        <th>description</th>
+        <th>collections count</th>
+        <th>options</th>
+      </tr>
+      {% for group in course.course_groups.all %}
+        <tr>
+          <td><a href="{% url 'module:group-detail' group_slug=group.slug %}?back_url={{ course.get_absolute_url}}">{{ group.name }}</a></td>
+          <td>
+            {{ group.description }}
+          </td>
+          <td>
+            {{ group.collections.count }}
+          </td>
+          <td>
+            <div class="options">
+              <!--Unlink group from course-->
+              <a class="trash delete-object"
+                 href=""
+                 data-id="{{ group.id }}"
+                >
+                <button class="btn btn-default btn-sm">{% fontawesome_icon icon='chain-broken' %} Unlink</button>
+                <!--{% bootstrap_button "" size='sm' icon='trash' %}-->
+              </a>
+              <!--Update group-->
+                {% url 'module:group-change' group_slug=group.slug as group_edit %}
+              <a>
+                {% bootstrap_button '' size='sm' icon='edit' extra_classes='pull-right modal_launcher' value=group_edit %}
+              </a>
+            </div>
+          </td>
+        </tr>
+      <tr>
+        {% with undone=True id=group.id object=group %}
+          {% url 'module:rm-group-from-course' course_slug=course.slug group_slug=group.slug as action_url %}
+          {% include "module/modals/confirmation_modal.html" with title="You are about unlink <ModuleGroup:"|add:group.name|add:"> from <Course:"|add:group.name|add:">" %}
+        {% endwith %}
+      {% endfor %}
+    </table>
+  {% else %}
+    <div class="alert alert-info" role="alert">
+      You have no groups in this course for now.
+    </div>
+  {% endif %}
+
+  <button class="btn btn-default btn-lg open-modal" id="link-objects-modal">
+    <span class="fa fa-chain"></span>
+    Link group with course
+  </button>
+
+   <hr>
+      <h3>
+        <small>Tips:</small>
+      </h3>
+      <ul>
+        <li class="text-muted">to add the collection group into the course - click <i class="fa fa-chain">Link group with course</i> button</li>
+        <li class="text-muted">to remove collection group from the course - click <i class="fa fa-chain-broken">Unlink</i> button</li>
+      </ul>
+
+    <hr>
+
+</div>
+<!--Right side-->
+<div class="col-md-3">
+  <div class="row">
+    <h3 class="text-center">Course Info</h3>
+    <div class="alert alert-info text-center">
+      <h4 class="text-center">Description</h4>
+      <p class="text-left">
+        {% if course.description %}
+          {{ course.description }}
+        {% else %}
+          No description for this course.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+</div>
+
+{% url "module:group-add" course.slug as add_new_group %}
+{% url "module:add-group-to-course" course_slug=course.slug as add_group_url %}
+{% include "module/modals/link_objects.html" with course=course link_action_url=add_group_url add_new_object_url=add_new_group title='Link group with course' %}
+{% include "module/modals/modal_wrapper.html" %}
+
+{% url 'module:course-delete' course_slug=course.slug as delete_url %}
+{% include "module/modals/confirmation_modal.html" with object=course action_url=delete_url title="You are about deleting course " %}
+
+{% endblock content %}
+
+{% block bootstrap3_extra_script %}
+  {{ block.super }}
+  <script src="{% static 'module/js/module.js' %}"></script>
+{% endblock bootstrap3_extra_script %}

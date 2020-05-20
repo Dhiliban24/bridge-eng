@@ -1,0 +1,90 @@
+{% extends "module/base.html" %}
+{% load static bootstrap3 %}
+
+{% block title %}Groups of Modules{% endblock title %}
+
+<hr>
+
+{% block content %}
+
+    {% include "module/modals/modal_wrapper.html" %}
+    {% url "module:group-add" as group_add %}
+
+  {% if groups %}
+    <table class="table table-hover">
+      <tr>
+        <th>group name</th>
+        <th class="text-left">description</th>
+        <th>collections</th>
+        {% if not request.session.read_only_data %}
+          <th>options</th>
+        {% endif %}
+      </tr>
+      {% for group in groups %}
+        <tr>
+          <td><a href="{{ group.get_absolute_url }}?back_url={% url 'module:group-list' %}">{{ group.name }}</a></td>
+          <td class="text-left">
+            {% if group.description %}
+            {{ group.description|truncatewords:20 }}
+            {% else %}
+            No description
+            {% endif %}
+          </td>
+          <td style="width:5%; " class="container text-center">{{ group.collections.count }}</td>
+            {% if not request.session.read_only_data and group.owner == user %}
+            <td class="text-right" style="min-width: 90px;">
+              <div>
+                {% url 'module:group-share' group_slug=group.slug as group_share %}
+                <a>
+                {% bootstrap_button "Share" size='sm' icon='share' extra_classes='modal_launcher' value=group_share %}
+                </a>
+                  {% url 'module:group-change' group_slug=group.slug as group_edit %}
+                    <a>
+                  {% bootstrap_button "Edit" size='sm' icon='edit' extra_classes='modal_launcher' value=group_edit %}
+                    </a>
+                  <a class="move-down delete-object
+                      {% if group.has_linked_active_sequences %} show-alarm
+                      {% elif group.has_linked_sequences %} show-warning
+                      {% endif %}"
+                      href="{% url 'module:group-delete' group_slug=group.slug %}"
+                      data-id="{{ group.id }}">
+                      {% bootstrap_button "Delete" size='sm' icon='trash' %}
+                  </a>
+            {% elif group.owner != user %}
+                <td class="text-right" style="min-width: 90px;">
+                <div>
+                <p>Shared by {{ group.owner.username }}</p>
+            {% endif %}
+              {% url 'module:group-delete' group_slug=group.slug as delete_url %}
+              {% if group.has_linked_active_sequences %}
+                {% with message="At least one student is still working on the Collection which is in " %}
+                  {% include "module/modals/confirmation_modal.html" with object=group action_url=delete_url id=group.id %}
+                {% endwith %}
+              {% elif group.has_linked_sequences %}
+                {% with message="At least one student is linked to the Collection which is in " %}
+                  {% include "module/modals/confirmation_modal.html" with object=group action_url=delete_url id=group.id %}
+                {% endwith %}
+              {% else %}
+                {% include "module/modals/confirmation_modal.html" with object=group action_url=delete_url id=group.id %}
+            </div>
+            </td>
+            {% endif %}
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <div class="alert alert-info" role="alert">
+      You have no groups for now.
+    </div>
+  {% endif %}
+  {% if not request.session.read_only_data %}
+      <hr>
+      {% bootstrap_button 'Add Group' size='lg' icon='plus' extra_classes='modal_launcher' value=group_add %}
+  {% endif %}
+
+{% endblock content %}
+
+{% block bootstrap3_extra_script %}
+  {{ block.super }}
+  <script src="{% static 'module/js/module.js' %}"></script>
+{% endblock bootstrap3_extra_script %}

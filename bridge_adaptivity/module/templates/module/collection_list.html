@@ -1,0 +1,87 @@
+{% extends "module/base.html" %}
+{% load static bootstrap3 module_extras %}
+
+{% block title %}Collections{% endblock title %}
+
+<hr>
+
+{% block content %}
+    <div id="self-user-data" data-self-user="{{ self_id }}" style="display: none"></div>
+    {% include "module/modals/modal_wrapper.html" %}
+    {% url "module:collection-add" as collection_add %}
+  {% if collections %}
+    <table class="table table-hover">
+      <tr>
+        <th>collection name</th>
+        <th>groups</th>
+        {% if not request.session.read_only_data %}
+          <th>options</th>
+        {% endif %}
+      </tr>
+      {% for collection in collections %}
+        <tr>
+          <td>
+            <a href="{% url 'module:collection-detail' collection.slug %}?back_url={{ collection.get_absolute_url }}">
+            {{ collection.name }} : {{ collection.activities.count }}
+            {{ collection.activities.count|pluralize:'activity,activities' }}</a>
+          </td>
+          <td style="max-width: 30%">
+            {% for group in avaliable_groups|key:collection.slug %}
+                {% url "module:group-detail"  group.slug as group_detail %}
+                <a class="{% if forloop.counter > 10 %}hidden-group {% endif %}label label-info" href="{{ group_detail }}">{{ group.name }}</a>
+          {% endfor %}
+          </td>
+            {% if not request.session.read_only_data %}
+            <td>
+              <div>
+                    {% url 'module:collection-change' collection.slug as collection_edit %}
+                    <a>
+                    {% bootstrap_button "Edit" size='sm' icon='edit' extra_classes='modal_launcher' value=collection_edit %}
+                    </a>
+                {% if collection.owner == user %}
+                  {% url 'module:collection-delete' slug=collection.slug as delete_url %}
+                  <a
+                      class="move-down delete-object
+                      {% if collection.has_linked_active_sequences %} show-alarm
+                      {% elif collection.has_linked_sequences %} show-warning{% endif %}"
+                      data-id="{{ collection.slug }}">
+                      {% bootstrap_button "Delete" size='sm' icon='trash' %}
+                  </a>
+                  {% with title="You are about deleting " add_obj_in_title=True %}
+                    {% if collection.has_linked_active_sequences %}
+                      {% with message="At least one student is still working on the collection: " %}
+                        {% include "module/modals/confirmation_modal.html" with object=collection action_url=delete_url id=collection.slug %}
+                      {% endwith %}
+                    {% elif collection.has_linked_sequences %}
+                      {% with message="At least one student is linked to the collection: " %}
+                        {% include "module/modals/confirmation_modal.html" with object=collection action_url=delete_url id=collection.slug %}
+                      {% endwith %}
+                    {% else %}
+                      {% include "module/modals/confirmation_modal.html" with object=collection action_url=delete_url id=collection.slug %}
+                    {% endif %}
+                  {% endwith %}
+                {% endif %}
+            </div>
+            </td>
+            {% endif %}
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <div class="alert alert-info" role="alert">
+      You have no collections for now.
+    </div>
+  {% endif %}
+
+  {% if not request.session.read_only_data %}
+
+  <hr>
+  {% bootstrap_button 'Add Collection' size='lg' icon='plus' extra_classes='modal_launcher' value=collection_add%}
+  {% endif %}
+
+{% endblock content %}
+
+{% block bootstrap3_extra_script %}
+  {{ block.super }}
+  <script src="{% static 'module/js/module.js' %}"></script>
+{% endblock bootstrap3_extra_script %}

@@ -1,0 +1,299 @@
+{% extends "module/base.html" %}
+{% load staticfiles bootstrap3 %}
+
+{% block title %}
+  Collection: <span class="label label-default">{{ collection.name }}</span>
+
+{% endblock title %}
+
+<hr>
+
+{% block content %}
+  {% include "module/modals/modal_wrapper.html" %}
+  {%  url 'module:activity-add' collection_slug=collection.slug as activity_add %}
+
+    <div
+            id="activity-add-url-holder"
+            data-url = '{{ activity_add }}'
+            style="display: none">
+    </div>
+
+  <div class="row">
+ {% include "module/modals/toast.html" with id='preview-warning' message='There is no preview for the empty group' %}
+ {% include "module/modals/no_available_activity.html" with id='not-available-for-student'%}
+
+
+      <div class="col-md-8">
+        <h3 class="detail-toolpanel">
+
+            {% if not request.session.read_only_data %}
+                {% url 'module:collection-change' slug=collection.slug as collection_edit %}
+                <a class="pull-right">
+                {% bootstrap_button "Edit" size='sm' icon='edit' extra_classes='modal_launcher' value=collection_edit %}
+                </a>
+                {% if collection.owner == user %}
+                <a class="pull-right delete-object
+                         {% if collection.has_linked_sequences %}
+                           {% if collection.has_linked_active_sequences %}
+                             show-alarm {% else %} show-warning
+                           {% endif %}
+                         {% endif %}"
+                   data-id="{{ collection.id }}">
+                    {% bootstrap_button "Delete" size='sm' icon='trash' %}
+                </a>
+                 {% endif %}
+                {% if sync_available %}
+                    <a class="pull-right show-warning">
+                        {% bootstrap_button 'Sync with Engines' size='sm' icon='refresh' button_class="btn-info" %}
+                    </a>
+                {% endif %}
+            {% endif %}
+            <a
+                    class="pull-right"
+                    id="collection-preview-button"
+                    href="{% url 'module:collection-preview' slug=collection.slug %}?back_url={{back_url}}"
+            >
+                {% bootstrap_button 'Preview' size='sm' icon='glyphicon glyphicon-eye-open' button_class="btn-success" %}
+            </a>
+        </h3>
+    </div>
+    <div id="activities" data-engine="{{ engine }}" class="col-md-8">
+      {% if activities %}
+        <table class="table table-hover">
+          <tr>
+            {% for field in render_fields %}
+              <th class="{% if forloop.first %}text-left{% else %}text-center{% endif %}">
+                {% if field == 'name' %}activity name{% else %}
+                {{ field }}
+                {% endif %}
+              </th>
+            {% endfor %}
+            <th class="text-right">options</th>
+          </tr>
+          {% for activity in activities %}
+            <tr id="activity-row-{{ forloop.counter0 }}"
+                class="activity droppable {% if not activity.lti_content_source.is_active %}danger{% elif activity.atype == 'A' %}warning{% elif activity.atype == 'Z' %}info{% endif %}"
+                data-activity-name="{{ activity.name }}"
+                data-id="{{ activity.id }}"
+                data-activity-source-launch-url="{{ activity.source_launch_url }}"
+                data-content_source_id="{{ activity.lti_content_source.id }}"
+                data-source-active="{% if activity.lti_content_source.is_active %}true{% endif %}"
+                {% if not request.session.read_only_data %}
+                    draggable="{% if activity.atype != 'G' %}true{% endif %}"
+                    ondrop="drop_handler(event, this);"
+                    ondragstart="dragstart_handler(event);"
+                    ondragover="dragover_handler(event);"
+                    data-index="{{ forloop.counter0 }}"
+                    data-index_order="{{ activity.order }}"
+                    data-move_url="{% url 'module:activity-move' pk=activity.pk  %}?back_url={{ activity.get_absolute_url}}"
+                    data-atype="{{activity.atype}}"
+                    labelstring="{% if activity.atype == 'A' %}PRE:{% elif activity.atype == 'Z' %}POST:{% endif %}"
+                {% endif %}
+
+            >
+                {% url 'module:activity-change' activity.pk collection.slug as activity_edit %}
+              <td class="text-left modal_launcher" value="{{ activity_edit }}">
+
+                <a>
+                  {{ activity.name }}
+                  <div>
+                    {% if activity.atype == 'A' %}
+                      <span class="label label-warning">
+                      PRE:{{ activity.order }}
+                  </span>
+                    {% elif activity.atype == 'Z' %}
+                      <span class="label label-info">
+                      POST:{{ activity.order }}
+                  </span>
+                    {% endif %}
+                  </div>
+                </a>
+              </td>
+              <td class="text-center">
+                {% if activity.tags == 'Unknown' or activity.tags is None %}-{% else %}{{ activity.tags }}{% endif %}
+              </td>
+              <td class="text-center">{{ activity.difficulty }}</td>
+              <td class="text-center">{{ activity.points|default:"-" }}</td>
+              <td class="text-center">{{ activity.source_name|default:"-" }}</td>
+              <td class="text-right">
+                <div class="options">
+                  {% if not request.session.read_only_data %}
+                      <a class="trash delete-object
+                      {% if collection.has_linked_active_sequences %} show-alarm
+                      {% elif collection.has_linked_sequences %} show-warning
+                      {% endif %} pull-right" data-id="{{ activity.id }}">
+                        {% bootstrap_button "" size='sm' icon='trash' %}
+                      </a>
+                      <a class="pull-right">
+                      {% bootstrap_button "" size='sm' icon='edit' extra_classes='modal_launcher' value=activity_edit %}
+                      </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% url 'module:activity-delete' activity.pk as delete_url %}
+          {% include "module/modals/confirmation_modal.html" with add_obj_in_title=True object=activity action_url=delete_url id=activity.id title="You are about deleting "%}
+          {% endfor %}
+        </table>
+      {% else %}
+        <div class="alert alert-info" role="alert">Your collection has no activities for now. Take a look at the right
+          panel.
+        </div>
+      {% endif %}
+      <hr>
+      <h3>
+        <small>Tips:</small>
+      </h3>
+      <ul>
+        <li class="text-muted">to see the list of available LTI components click on course title</li>
+        <li class="text-muted">to preview LTI component click on its `eye` icon</li>
+        <li class="text-muted">to create new Activity based on certain LTI component click on its title</li>
+        <li class="text-muted">
+          <span class="bg-warning">pre-assessments</span> and
+          <span class="bg-info">post-assessment</span> activities are marked respectively
+        </li>
+        <li class="text-muted">
+            activities with <span class="bg-danger">not active content source</span>
+            are marked <span class="bg-danger">red</span>
+        </li>
+          <li class="text-muted">
+              Unreachable activities from the content source marked
+          <span class="unreachable-activity">gray</span>
+        </li>
+      </ul>
+
+      {# Right accordion panel #}
+    </div>
+    {% if not request.session.read_only_data %}
+    <div class="col-md-4">
+      <div class="row">
+        <h3 class="text-center">Available content courses</h3>
+      </div>
+
+        {% if content_sources %}
+            <form>
+                {% for source in content_sources %}
+                    <div class="input-group content-source-select">
+                    <span class="input-group-addon">
+                        <input type="checkbox" name="content_source" value="{{ source.id }}" {{ source.checked }}>
+                    </span>
+                        <span class="form-control">{{ source.name }}</span>
+                    </div>
+                    {% if back_url %}
+                        <input type="hidden" name="back_url" value="{{ back_url }}">
+                    {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn btn-default content-source-filter-btn">Filter</button>
+            </form>
+        {% endif %}
+      <div class="raw panel-heading">
+        <label for="filter">Filter Activities:</label>
+        <input id="filter" type="search">
+        <span class="glyphicon glyphicon-search"></span>
+        </button>
+      </div>
+      <div class="row">
+
+
+        {% if not_active_content_source %}
+            <div class="alert alert-danger text-center" role="alert">
+               Some activities don't have an active content source.
+               Please send an email for the Bridge's administrator with the request to activate
+                required Content Sources: {{ not_active_content_source|join:", " }}
+            </div>
+        {% endif %}
+        {% if errors_content_source %}
+            {% for error, content_sources in errors_content_source.items %}
+            <div class="alert alert-danger text-center" role="alert">
+               Content source(s) "{{ content_sources|join:", " }}" is/are unavailable. Reason: {{ error }} Please contact Bridge administrator to solve the problem.
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% if not source_courses %}
+          <div class="alert alert-warning text-center" role="alert">
+            There are no active content sources.
+            You may ask Bridge administrator to activate one.
+          </div>
+          <h3>
+            <small>Possible reasons:</small>
+          </h3>
+          <ul>
+            <li class="text-muted">all content providers are deactivated</li>
+            <li class="text-muted">API connection problem</li>
+          </ul>
+        {% endif %}
+        <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+          {% for source_course in source_courses %}
+
+            <div id="content-panel-{{ forloop.counter0 }}" class="panel panel-default">
+              <div class="panel-heading" role="tab" id="heading{{ forloop.counter0 }}">
+                <h4 class="panel-title">
+                  <a {% if not forloop.first %}class="collapsed" {% endif %} role="button" data-toggle="collapse"
+                     data-parent="#accordion" href="#collapse{{ forloop.counter0 }}"
+                     data-course-id="{{ source_course.course_id }}"
+                     data-course-index="{{ forloop.counter0 }}"
+                     data-content_source_id="{{ source_course.content_source_id }}"
+                     aria-expanded="false"
+                     aria-controls="collapse{{ forloop.counter0 }}"
+                     style="overflow:hidden; display:block;"
+                  >
+                    <span style="display:inline-block; margin-bottom:5px;">
+                        {{ source_course.name }}
+                    </span>
+                    <span
+                    class="label label-default pull-right">{{ source_course.org }}</span>
+                  </a>
+                </h4>
+              </div>
+              <div id="collapse{{ forloop.counter0 }}" class="panel-collapse collapse"
+                   role="tabpanel" aria-labelledby="heading{{ forloop.counter0 }}">
+                <div id="panel-body-{{ forloop.counter0 }}" class="panel-body">
+
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+
+        </div>
+      </div>
+
+    </div>
+    {% endif %}
+  </div>
+
+  {% include "module/modals/source_modal.html" %}
+  {% include "module/modals/engine_failure_modal.html" %}
+
+  {% url 'module:collection-delete' slug=object.slug as delete_url %}
+  {% url 'module:collection-sync' slug=object.slug as sync_url %}
+
+  {% with title="Sync Collection with the Engines" message="Collection will be synchronized immediately!" %}
+      {% if back_url %}
+          {% include "module/modals/confirmation_modal.html" with object='' action_url=sync_url|add:"?back_url="|add:back_url undone=True %}
+      {% else %}
+          {% include "module/modals/confirmation_modal.html" with object='' action_url=sync_url undone=True %}
+      {% endif %}
+  {% endwith %}
+
+  {% if collection.has_linked_active_sequences %}
+    {% with message="At least one student is still working on the collection: " %}
+      {% include "module/modals/confirmation_modal.html" with object=object action_url=delete_url id=collection.id %}
+    {% endwith %}
+  {% elif collection.has_linked_sequences %}
+    {% with message="At least one student is linked to the collection: " %}
+      {% include "module/modals/confirmation_modal.html" with object=object action_url=delete_url id=collection.id %}
+    {% endwith %}
+  {% else %}
+    {% include "module/modals/confirmation_modal.html" with object=object action_url=delete_url id=collection.id %}
+  {% endif %}
+
+{% endblock content %}
+
+{% block bootstrap3_extra_script %}
+  {{ block.super }}
+{% if not request.session.read_only_data %}
+    <script src="{% static 'module/js/module.js' %}"></script>
+    <script src="{% static 'module/js/base_drag_drop.js' %}"></script>
+    <script src="{% static 'module/js/collection_drag_drop.js' %}"></script>
+  {% endif %}
+{% endblock bootstrap3_extra_script %}
